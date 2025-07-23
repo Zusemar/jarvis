@@ -5,11 +5,28 @@
 
 ---
 
-## Возможности
+## Структура проекта
 
-- Управление Spotify (следующий/предыдущий трек, пауза, продолжить) голосом
-- Распознавание речи на русском языке через Python (`speech_recognition`)
-- Кроссплатформенность (macOS, Linux, Windows)
+```
+jarvis/
+├── cmd/
+│   └── jarvis/
+│       └── main.go
+├── internal/
+│   ├── speech/
+│   │   └── recognize.go
+│   └── spotifyApi/
+│       └── spotify.go
+├── scripts/
+│   └── recognize.py
+├── venv/
+├── requirements.txt
+├── go.mod
+├── go.sum
+├── .gitignore
+├── .secret
+├── README.md
+```
 
 ---
 
@@ -69,6 +86,7 @@
 
 2. **Запустите Go-приложение:**
    ```sh
+   cd cmd/jarvis
    go run main.go
    ```
 
@@ -91,9 +109,3 @@
 
 - Файл `.secret` и папку `venv/` не добавляйте в git (см. `.gitignore`).
 - Для работы микрофона на macOS убедитесь, что Terminal имеет доступ к микрофону (Системные настройки → Конфиденциальность → Микрофон).
-
----
-
-## Лицензия
-
-MIT
