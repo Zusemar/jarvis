@@ -1,12 +1,13 @@
 import speech_recognition as sr
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import os
 
 # Настройки Spotify
-SPOTIPY_CLIENT_ID = '5f9752e7bd744480a0102cc241866c7f'
-SPOTIPY_CLIENT_SECRET = '5f366f0e5902481796067a8b7828bb88'
-SPOTIPY_REDIRECT_URI = 'http://127.0.0.1:8000/callback'
-SCOPE = 'user-modify-playback-state user-read-playback-state'
+SPOTIPY_CLIENT_ID = os.getenv('SPOTIPY_CLIENT_ID')
+SPOTIPY_CLIENT_SECRET = os.getenv('SPOTIPY_CLIENT_SECRET')
+SPOTIPY_REDIRECT_URI = os.getenv('SPOTIPY_REDIRECT_URI')
+SCOPE = os.getenv('SPOTIPY_SCOPE', 'user-modify-playback-state user-read-playback-state')
 
 # Инициализация Spotify
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
