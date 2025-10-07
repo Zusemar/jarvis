@@ -34,6 +34,26 @@ func main() {
 		}
 		fmt.Println("Вы сказали:", text)
 
+		if trackName, ok := spotifyApi.ParsePlayTrackCommand(text); ok {
+			if err := spClient.PlayTrackByName(trackName); err != nil {
+				fmt.Println("Не удалось включить трек:", err)
+				speech.Say("Не нашёл трек")
+				continue
+			}
+			speech.Say("Включаю трек " + trackName)
+			continue
+		}
+
+		if playlistName, ok := spotifyApi.ParsePlayPlaylistCommand(text); ok {
+			if err := spClient.PlayPlaylistByName(playlistName); err != nil {
+				fmt.Println("Не удалось включить плейлист:", err)
+				speech.Say("Не нашёл плейлист")
+				continue
+			}
+			speech.Say("Включаю плейлист " + playlistName)
+			continue
+		}
+
 		switch {
 		case spotifyApi.IsNextCommand(text):
 			spClient.Next()

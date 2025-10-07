@@ -2,6 +2,7 @@ package spotifyApi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -60,8 +61,79 @@ func (c *Client) Previous() { c.client.Previous(c.ctx) }
 func (c *Client) Pause()    { c.client.Pause(c.ctx) }
 func (c *Client) Play()     { c.client.Play(c.ctx) }
 
+func (c *Client) PlayTrackByName(name string) error {
+	result, err := c.client.Search(c.ctx, name, spot.SearchTypeTrack, spot.Limit(1))
+	if err != nil {
+		return err
+	}
+	if result.Tracks == nil || len(result.Tracks.Tracks) == 0 {
+		return errors.New("track not found")
+	}
+
+	trackURI := result.Tracks.Tracks[0].URI
+	return c.client.PlayOpt(c.ctx, &spot.PlayOptions{URIs: []spot.URI{trackURI}})
+}
+
+func (c *Client) PlayPlaylistByName(name string) error {
+	result, err := c.client.Search(c.ctx, name, spot.SearchTypePlaylist, spot.Limit(1))
+	if err != nil {
+		return err
+	}
+	if result.Playlists == nil || len(result.Playlists.Playlists) == 0 {
+		return errors.New("playlist not found")
+	}
+
+	playlistURI := result.Playlists.Playlists[0].URI
+	return c.client.PlayOpt(c.ctx, &spot.PlayOptions{PlaybackContext: &playlistURI})
+}
+
 func IsNextCommand(text string) bool  { return strings.Contains(text, "следующий") }
 func IsPrevCommand(text string) bool  { return strings.Contains(text, "предыдущий") }
 func IsPauseCommand(text string) bool { return strings.Contains(text, "пауза") }
 func IsPlayCommand(text string) bool  { return strings.Contains(text, "продолжи") }
 func IsExitCommand(text string) bool  { return strings.Contains(text, "выход") }
+
+func ParsePlayTrackCommand(text string) (string, bool) {
+	prefixes := []string{
+		"включи трек",
+		"включить трек",
+		"включи песню",
+		"включить песню",
+	}
+	return parseNamedCommand(text, prefixes)
+}
+
+func ParsePlayPlaylistCommand(text string) (string, bool) {
+	prefixes := []string{
+		"включи плейлист",
+		"включить плейлист",
+		"включи подборку",
+		"включить подборку",
+	}
+	return parseNamedCommand(text, prefixes)
+}
+
+func parseNamedCommand(text string, prefixes []string) (string, bool) {
+	cleaned := strings.TrimSpace(text)
+	lower := strings.ToLower(cleaned)
+	lowerRunes := []rune(lower)
+	textRunes := []rune(cleaned)
+
+	for _, prefix := range prefixes {
+		prefix = strings.TrimSpace(prefix)
+		prefixRunes := []rune(prefix)
+		if len(lowerRunes) < len(prefixRunes) {
+			continue
+		}
+		if string(lowerRunes[:len(prefixRunes)]) != prefix {
+			continue
+		}
+		remainder := strings.TrimSpace(string(textRunes[len(prefixRunes):]))
+		if remainder == "" {
+			continue
+		}
+		return remainder, true
+	}
+
+	return "", false
+}
