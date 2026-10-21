@@ -1,0 +1,9 @@
+{
+  "locale": "ru-RU",
+  "wakeWords": ["джарвис", "jarvis"],
+  "maximumVolume": 65,
+  "volumeStep": 5,
+  "recognitionMode": "automatic",
+  "spokenFeedback": false,
+  "savedMusic": {}
+}

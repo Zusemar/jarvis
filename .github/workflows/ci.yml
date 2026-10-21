@@ -1,0 +1,27 @@
+name: macOS checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Test command handling
+        run: bash scripts/test-core.sh
+      - name: Build background app
+        run: bash scripts/build-app.sh
+      - name: Validate bundle
+        run: |
+          plutil -lint dist/Jarvis.app/Contents/Info.plist
+          codesign --verify --deep --strict dist/Jarvis.app
+          dist/Jarvis.app/Contents/MacOS/Jarvis --config config.example.json --dry-run 'Джарвис, следующий'
+      - name: Archive app with executable permissions
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Jarvis.app dist/Jarvis-Mac.zip
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: Jarvis-macOS
+          path: dist/Jarvis-Mac.zip
+          if-no-files-found: error
