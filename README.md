@@ -96,3 +96,30 @@ dist/Jarvis.app/Contents/MacOS/Jarvis --config config.example.json --dry-run 'Д
 Источники: [Apple Speech](https://developer.apple.com/documentation/speech/sfspeechrecognizer), [локальное распознавание](https://developer.apple.com/documentation/speech/sfspeechrecognizer/supportsondevicerecognition), [разрешения macOS](https://developer.apple.com/documentation/bundleresources/protected-resources). Команды Spotify сверены с `Spotify.app/Contents/Resources/Spotify.sdef` установленного клиента.
 
 Скрипты сборки не меняют установленный комплект Apple. Если после обновления Command Line Tools остались два объявления SwiftBridging, `scripts/compiler.sh` создает временное представление файлов для компилятора в `.build/`, скрывающее только устаревший дубликат.
+
+## Постоянный фоновый запуск на Mac
+
+```sh
+bash scripts/service.sh install
+```
+
+Команда устанавливает собранный Jarvis в `~/Applications/Jarvis.app`, регистрирует его в macOS и создает `~/Library/LaunchAgents/com.zusemar.jarvis.plist`. Jarvis запускается сразу и при каждом входе в учетную запись. После аварийного завершения launchd запускает его снова, с ограничением частоты запусков 30 секунд. Для микрофона и Spotify служба работает в графическом сеансе пользователя — [LaunchAgent](https://developer.apple.com/documentation/servicemanagement/).
+
+При первом запуске подтвердите системные запросы доступа. Предыдущая установленная копия приложения и настройки службы при переустановке сохраняются с суффиксом `.backup-...`. Конфигурация музыки остается в `~/Library/Application Support/Jarvis/config.json`.
+
+Управление:
+
+```sh
+bash scripts/service.sh status   # состояние фоновой службы
+bash scripts/service.sh restart  # перезапустить
+bash scripts/service.sh stop     # остановить до следующего входа в macOS
+bash scripts/service.sh start    # запустить снова
+bash scripts/service.sh disable  # отключить автозапуск и остановить
+bash scripts/service.sh check    # диагностика разрешений и журнал
+```
+
+Голосовое «Джарвис, перестань слушать» завершает приложение штатно: автоматический перезапуск после этой команды не выполняется. При следующем входе в macOS автозапуск снова сработает. `disable` отключает его до команды `start`. Дополнительная проверка восстановления после сбоя: `bash scripts/service.sh test-restart` (приложение будет аварийно завершено и должно запуститься снова).
+
+Служба не работает до входа в учетную запись и во время сна Mac. После пробуждения приложение восстанавливает прослушивание. Установка не меняет системные настройки сна; для длительной работы от питания настройте их под режим студии. Не добавляйте одновременно вторую копию Jarvis в «Объекты входа».
+
+Технические логи службы: `~/Library/Logs/Jarvis/`. Распознанные фразы в них не записываются.

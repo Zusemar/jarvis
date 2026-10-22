@@ -47,3 +47,7 @@ AirPods или другая гарнитура могут служить мик�
 ## Основания и границы
 
 Выбор близкого микрофона — практическая рекомендация для отношения голоса к музыке; гарантировать покрытие без плана помещения и акустического теста нельзя. Наличие локального распознавания зависит от языка и устройства: [Apple](https://developer.apple.com/documentation/speech/sfspeechrecognizer/supportsondevicerecognition). [Apple описывает разрешения на микрофон](https://developer.apple.com/documentation/bundleresources/information-property-list/nsmicrophoneusagedescription) и [управление другими приложениями](https://developer.apple.com/documentation/bundleresources/protected-resources).
+
+## Автозапуск как служба
+
+Для постоянного запуска используйте `bash scripts/service.sh install` из папки проекта после сборки. Это заменяет ручное добавление в «Объекты входа»: не используйте оба способа одновременно. Jarvis устанавливается в `~/Applications`, запускается при входе в macOS и восстанавливается после аварии. Голосовая команда завершения останавливает его до следующего входа; `bash scripts/service.sh disable` отключает автозапуск. Во сне Mac микрофон не слушается, после пробуждения прослушивание возобновляется.
