@@ -176,4 +176,22 @@ final class CommandTests {
         assertThrowsError(try config.validated())
     }
 
+    func testKokoroRequiresEnglishRepliesAndKeepsRussianCommands() throws {
+        var config = Configuration()
+        config.speechEngine = "kokoro"
+        assertThrowsError(try config.validated())
+        config.responseLanguage = "en"
+        let ready = try config.validated()
+        assertEqual(ready.locale, "ru-RU")
+        assertEqual(ready.kokoroVoice, "af_heart")
+        config.kokoroVoice = "../../script"
+        assertThrowsError(try config.validated())
+        config.kokoroVoice = "bm_george"
+        config.kokoroSpeed = 0
+        assertThrowsError(try config.validated())
+        config.kokoroSpeed = 1
+        config.speechEngine = "unknown"
+        assertThrowsError(try config.validated())
+    }
+
 }

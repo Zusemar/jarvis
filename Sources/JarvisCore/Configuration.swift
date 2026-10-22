@@ -10,12 +10,17 @@ public struct Configuration: Codable, Sendable {
     public var voiceIdentifier = ""
     public var responseLanguage = "ru"
     public var speechRate = 0.5
+    public var speechEngine = "apple"
+    public var kokoroVoice = "af_heart"
+    public var kokoroSpeed = 1.0
     public var savedMusic: [String: String] = [:]
     public init() {}
 
     public func validated() throws -> Configuration {
         guard (1...100).contains(maximumVolume), (0.25...0.65).contains(speechRate), (1...20).contains(volumeStep),
               ["automatic", "onDevice"].contains(recognitionMode), ["ru", "en"].contains(responseLanguage),
+              ["apple", "kokoro"].contains(speechEngine), (0.5...2.0).contains(kokoroSpeed),
+              Self.kokoroVoices.contains(kokoroVoice), (speechEngine != "kokoro" || responseLanguage == "en"),
               !wakeWords.isEmpty, wakeWords.allSatisfy({ !$0.isEmpty && CommandParser.normalize($0).split(separator: " ").count == 1 }),
               !locale.isEmpty else { throw ConfigError.invalid }
         var result = self
@@ -27,6 +32,12 @@ public struct Configuration: Codable, Sendable {
         }
         return result
     }
+
+    public static let kokoroVoices: Set<String> = [
+        "af_heart", "af_bella", "af_nicole", "af_sarah", "af_sky", "af_alloy", "af_aoede", "af_jessica", "af_kore", "af_nova", "af_river",
+        "am_adam", "am_michael", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_onyx", "am_puck", "am_santa",
+        "bf_alice", "bf_emma", "bf_isabella", "bf_lily", "bm_daniel", "bm_fable", "bm_george", "bm_lewis"
+    ]
 
     /// Keep only Spotify IDs; never interpolate arbitrary configuration text into AppleScript.
     public static func spotifyURI(_ input: String) -> String? {

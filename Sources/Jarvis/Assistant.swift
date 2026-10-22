@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import Speech
+import ApplicationServices
 import JarvisCore
 
 final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDelegate {
@@ -14,6 +15,8 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     private var afterSpeech: (() -> Void)?
     private var observers: [NSObjectProtocol] = []
     private var startupError: String?
+    private var healthTimer: Timer?
+    private var kokoro: KokoroSpeaker?
 
     init(configuration: Configuration, startupError: String? = nil) {
         self.configuration = configuration
@@ -21,6 +24,7 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
         self.startupError = startupError
         super.init()
         synthesizer.delegate = self
+        if configuration.speechEngine == "kokoro" { kokoro = KokoroSpeaker(configuration: configuration) }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -30,6 +34,8 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
             NSApp.terminate(nil)
             return
         }
+        writeHealth()
+        healthTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.writeHealth() }
         guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") != nil else {
             fatal("Установите настольное приложение Spotify на Mac и войдите в свой аккаунт.")
             return
@@ -110,6 +116,7 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
         pending?.cancel()
         listener?.stop()
         if command == .stopListening {
+            Settings.markStopped()
             speak(message(.goodbye)) { NSApp.terminate(nil) }
             return
         }
@@ -159,13 +166,32 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
         message.text(language: configuration.responseLanguage)
     }
 
+    private func writeHealth() {
+        let status: [String: Any] = [
+            "pid": ProcessInfo.processInfo.processIdentifier,
+            "appPath": Bundle.main.bundlePath,
+            "updatedAt": Date().timeIntervalSince1970,
+            "accessibility": AXIsProcessTrusted(),
+            "microphone": AVCaptureDevice.authorizationStatus(for: .audio).rawValue,
+            "speechRecognition": SFSpeechRecognizer.authorizationStatus().rawValue,
+            "speechEngine": configuration.speechEngine,
+            "voice": configuration.speechEngine == "kokoro" ? configuration.kokoroVoice : configuration.voiceIdentifier,
+            "kokoroCompletedUtterances": kokoro?.completedUtterances ?? 0,
+            "kokoroLastError": kokoro?.lastError ?? ""
+        ]
+        let url = Settings.defaultURL.deletingLastPathComponent().appendingPathComponent("runtime.json")
+        if let data = try? JSONSerialization.data(withJSONObject: status, options: .sortedKeys) {
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
     private func spokenError(_ error: Error) -> String {
         if let spotifyError = error as? SpotifyError { return spotifyError.spokenDescription(language: configuration.responseLanguage) }
         return configuration.responseLanguage == "en" ? message(.spotifyFailure) : "Не удалось выполнить команду Spotify. " + error.localizedDescription
     }
 
     private func resetAndListen() {
-        guard !synthesizer.isSpeaking else { return }
+        guard !synthesizer.isSpeaking, kokoro?.isSpeaking != true else { return }
         pending?.cancel()
         lastTranscript = ""
         consumedTranscript = ""
@@ -176,6 +202,10 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     private func speak(_ text: String, completion: @escaping () -> Void) {
         listener?.stop()
         pending?.cancel()
+        if let kokoro {
+            kokoro.speak(text, completion: completion)
+            return
+        }
         afterSpeech = completion
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(identifier: configuration.voiceIdentifier)
@@ -191,12 +221,15 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     }
 
     private func fatal(_ message: String) {
+        Settings.markStopped()
         log.error("\(message, privacy: .public)")
         fputs("Jarvis: \(message)\n", stderr)
         speak(configuration.responseLanguage == "en" ? self.message(.startupFailure) : message) { NSApp.terminate(nil) }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        healthTimer?.invalidate()
+        kokoro?.stop()
         pending?.cancel()
         listener?.stop()
         for observer in observers {

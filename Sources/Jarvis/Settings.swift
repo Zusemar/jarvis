@@ -5,6 +5,10 @@ import OSLog
 let log = Logger(subsystem: "com.zusemar.jarvis", category: "assistant")
 
 struct Settings {
+    static func markStopped() {
+        let url = defaultURL.deletingLastPathComponent().appendingPathComponent("stopped")
+        try? Data().write(to: url, options: .atomic)
+    }
     static var defaultURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Jarvis/config.json")

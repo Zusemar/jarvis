@@ -21,7 +21,8 @@ struct TestRunner {
             ("now playing text reply", tests.testNowPlayingReadsPropertiesWithoutUnsupportedExists),
             ("voice settings", tests.testSpeechSettingsValidation),
             ("loop toggle transitions", tests.testLoopTogglesOffAndOnAndExplicitOffStaysOff),
-            ("English replies with Russian commands", tests.testEnglishRepliesKeepRussianRecognitionIndependent)
+            ("English replies with Russian commands", tests.testEnglishRepliesKeepRussianRecognitionIndependent),
+            ("local Kokoro configuration", tests.testKokoroRequiresEnglishRepliesAndKeepsRussianCommands)
         ]
         for (name, test) in cases { try test(); print("PASS: \(name)") }
         print("\(cases.count) tests, \(assertionCount) assertions passed")

@@ -11,5 +11,8 @@
   "savedMusic": {},
   "voiceIdentifier": "",
   "speechRate": 0.5,
-  "responseLanguage": "ru"
+  "responseLanguage": "ru",
+  "speechEngine": "apple",
+  "kokoroVoice": "af_heart",
+  "kokoroSpeed": 1.0
 }
