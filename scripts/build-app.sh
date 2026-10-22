@@ -18,7 +18,7 @@ cp packaging/Info.plist "$APP_PATH/Contents/Info.plist"
 cp packaging/kokoro_worker.py "$APP_PATH/Contents/Resources/kokoro_worker.py"
 "$JARVIS_COMPILER" "${JARVIS_COMPILER_ARGS[@]}" -O -target "$TARGET" \
   Sources/JarvisSupervisor/main.swift -o "$APP_PATH/Contents/Helpers/JarvisSupervisor"
-codesign --force --sign - --identifier com.zusemar.jarvis.supervisor "$APP_PATH/Contents/Helpers/JarvisSupervisor"
 # Local signature; distribution to other Macs needs Developer ID signing and notarization.
+codesign --force --sign - --identifier com.zusemar.jarvis.supervisor "$APP_PATH/Contents/Helpers/JarvisSupervisor"
 codesign --force --sign - "$APP_PATH"
 printf '\nГотово: %s\nОткройте Jarvis.app и разрешите доступы macOS.\n' "$APP_PATH"

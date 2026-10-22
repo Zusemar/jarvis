@@ -14,5 +14,10 @@
   "responseLanguage": "ru",
   "speechEngine": "apple",
   "kokoroVoice": "af_heart",
-  "kokoroSpeed": 1.0
+  "kokoroSpeed": 1.0,
+  "intentEngine": "rules",
+  "pronunciations": {
+    "A$AP Rocky": "Ay-sap Rocky",
+    "A$AP": "Ay-sap"
+  }
 }

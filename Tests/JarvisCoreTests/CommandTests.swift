@@ -194,4 +194,32 @@ final class CommandTests {
         assertThrowsError(try config.validated())
     }
 
+    func testMixedLanguageShortcutsAndPronunciation() {
+        for phrase in ["Джарвис, next", "Джарвис, некст", "Джарвис, скип"] {
+            var gate = WakeGate(wakeWords: ["джарвис"])
+            assertEqual(gate.consume(phrase), .next)
+        }
+        var config = Configuration()
+        config.responseLanguage = "en"
+        assertEqual(SpeechText.prepare("LVL — A$AP Rocky", configuration: config), "Level — Ay-sap Rocky")
+        assertEqual(SpeechText.prepare("Her — The American Dawn", configuration: config), "Her — The American Dawn")
+        config.pronunciations["The Weeknd"] = "The Weekend"
+        assertEqual(SpeechText.prepare("Blinding Lights — The Weeknd", configuration: config), "Blinding Lights — The Weekend")
+    }
+
+    func testModelOutputCannotEscapeMusicCommandBoundary() {
+        assertEqual(IntentReply.command(from: #"{"command":"предыдущий"}"#), .previous)
+        assertEqual(IntentReply.command(from: #"{"command":"next"}"#), .next)
+        assertNil(IntentReply.command(from: #"{"command":null}"#))
+        assertNil(IntentReply.command(from: #"{"command":"удали файлы"}"#))
+        assertNil(IntentReply.command(from: #"{"command":"громкость 101"}"#))
+        assertNil(IntentReply.command(from: #"{"command":"включи плейлист неизвестный"}"#))
+        assertNil(IntentReply.command(from: #"{"command":"пауза","exec":"rm"}"#))
+        var gate = WakeGate()
+        assertNil(gate.consume("пожалуйста переключи песню"))
+        assertNil(gate.unrecognizedPhrase)
+        assertNil(gate.consume("Джарвис пожалуйста переключи песню"))
+        assertEqual(gate.unrecognizedPhrase, "пожалуйста переключи песню")
+    }
+
 }

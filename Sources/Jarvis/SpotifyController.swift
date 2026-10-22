@@ -3,6 +3,13 @@ import ApplicationServices
 import JarvisCore
 
 struct SpotifyController {
+    static func accessibilityStatus() -> Int? {
+        guard let spotify = NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").first else { return nil }
+        let app = AXUIElementCreateApplication(spotify.processIdentifier)
+        AXUIElementSetMessagingTimeout(app, 0.25)
+        var value: CFTypeRef?
+        return Int(AXUIElementCopyAttributeValue(app, kAXChildrenAttribute as CFString, &value).rawValue)
+    }
     static func execute(_ source: String) throws -> String? {
         var details: NSDictionary?
         guard let script = NSAppleScript(source: source) else { throw SpotifyError.message(.scriptUnavailable) }
@@ -25,16 +32,21 @@ struct SpotifyController {
     /// Read Spotify's native tri-state checkbox: 0=off, 1=context, 2=one track.
     /// The public AppleScript Boolean cannot select state 2.
     static func setTrackRepeat(_ action: TrackRepeatAction, completion: @escaping (Result<Void, Error>) -> Void) {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        guard AXIsProcessTrustedWithOptions(options) else {
-            completion(.failure(SpotifyError.message(.accessibilityRequired)))
-            return
-        }
         guard let spotify = NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").first else {
             completion(.failure(SpotifyError.message(.spotifyNotRunning))); return
         }
         let app = AXUIElementCreateApplication(spotify.processIdentifier)
         AXUIElementSetMessagingTimeout(app, 1)
+        // Query the actual AX operation. The trust preflight can retain stale
+        // state after an app update or permission change.
+        var children: CFTypeRef?
+        let permission = AXUIElementCopyAttributeValue(app, kAXChildrenAttribute as CFString, &children)
+        if permission == .apiDisabled {
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+            completion(.failure(SpotifyError.message(.accessibilityRequired)))
+            return
+        }
         _ = AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
         do {
             guard let control = try repeatControl(in: app) else { throw SpotifyError.message(.repeatControlMissing) }

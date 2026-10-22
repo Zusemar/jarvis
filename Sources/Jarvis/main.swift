@@ -4,6 +4,11 @@ import Speech
 import JarvisCore
 
 let args = Array(CommandLine.arguments.dropFirst())
+if args.contains("--export-speech-phrases") {
+    let data = try JSONEncoder().encode(VoiceMessage.allCases.map { $0.text(language: "en") })
+    FileHandle.standardOutput.write(data)
+    exit(0)
+}
 if args.contains("--help") {
     print("""
     Jarvis — голосовое управление Spotify на Mac без окон и сервера.
@@ -79,6 +84,17 @@ if let index = args.firstIndex(of: "--execute") {
         catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
     } else { fputs("Нет сохраненной ссылки или команда требует голосового режима.\n", stderr); exit(1) }
     exit(0)
+}
+
+if let index = args.firstIndex(of: "--interpret") {
+    guard args.indices.contains(index + 1) else { exit(2) }
+    let resolver = IntentResolver()
+    resolver.resolve(args[index + 1]) { command in
+        guard let command else { print("No supported music command"); exit(1) }
+        print("Recognized: \(command)")
+        exit(0)
+    }
+    RunLoop.main.run()
 }
 
 let application = NSApplication.shared

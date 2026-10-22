@@ -17,6 +17,7 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     private var startupError: String?
     private var healthTimer: Timer?
     private var kokoro: KokoroSpeaker?
+    private let intentResolver = IntentResolver()
 
     init(configuration: Configuration, startupError: String? = nil) {
         self.configuration = configuration
@@ -112,7 +113,21 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     private func process(_ text: String) {
         guard text != consumedTranscript else { return }
         consumedTranscript = text
-        guard let command = gate.consume(text) else { return }
+        guard let command = gate.consume(text) else {
+            if configuration.intentEngine == "openclaw", let phrase = gate.unrecognizedPhrase, phrase.count <= 500 {
+                listener?.stop()
+                pending?.cancel()
+                intentResolver.resolve(phrase) { [weak self] command in
+                    if let command { self?.perform(command) }
+                    else { self?.resetAndListen() }
+                }
+            }
+            return
+        }
+        perform(command)
+    }
+
+    private func perform(_ command: Command) {
         pending?.cancel()
         listener?.stop()
         if command == .stopListening {
@@ -142,17 +157,8 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
         do {
             let result = try SpotifyController.execute(source)
             if command == .nowPlaying {
-                // Lower the music briefly so the title is audible over studio speakers.
-                let originalVolume = try SpotifyController.volume()
-                let ducked = min(originalVolume ?? 15, 15)
-                try? SpotifyController.setVolume(ducked)
                 let title = result == VoiceMessage.nothingPlaying.text(language: "ru") ? message(.nothingPlaying) : result ?? message(.nothingPlaying)
-                speak(title) { [weak self] in
-                    if let originalVolume, (try? SpotifyController.volume()) == ducked {
-                        try? SpotifyController.setVolume(originalVolume)
-                    }
-                    self?.resetAndListen()
-                }
+                speak(title) { [weak self] in self?.resetAndListen() }
             } else if configuration.spokenFeedback {
                 speak(message(.done)) { [weak self] in self?.resetAndListen() }
             } else { resetAndListen() }
@@ -172,9 +178,11 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
             "appPath": Bundle.main.bundlePath,
             "updatedAt": Date().timeIntervalSince1970,
             "accessibility": AXIsProcessTrusted(),
+            "spotifyAccessibilityStatus": SpotifyController.accessibilityStatus() ?? -1,
             "microphone": AVCaptureDevice.authorizationStatus(for: .audio).rawValue,
             "speechRecognition": SFSpeechRecognizer.authorizationStatus().rawValue,
             "speechEngine": configuration.speechEngine,
+            "intentEngine": configuration.intentEngine,
             "voice": configuration.speechEngine == "kokoro" ? configuration.kokoroVoice : configuration.voiceIdentifier,
             "kokoroCompletedUtterances": kokoro?.completedUtterances ?? 0,
             "kokoroLastError": kokoro?.lastError ?? ""
@@ -191,7 +199,7 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     }
 
     private func resetAndListen() {
-        guard !synthesizer.isSpeaking, kokoro?.isSpeaking != true else { return }
+        guard !synthesizer.isSpeaking, kokoro?.isSpeaking != true, !intentResolver.isBusy else { return }
         pending?.cancel()
         lastTranscript = ""
         consumedTranscript = ""
@@ -202,6 +210,7 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     private func speak(_ text: String, completion: @escaping () -> Void) {
         listener?.stop()
         pending?.cancel()
+        let text = SpeechText.prepare(text, configuration: configuration)
         if let kokoro {
             kokoro.speak(text, completion: completion)
             return
@@ -230,6 +239,7 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     func applicationWillTerminate(_ notification: Notification) {
         healthTimer?.invalidate()
         kokoro?.stop()
+        intentResolver.stop()
         pending?.cancel()
         listener?.stop()
         for observer in observers {

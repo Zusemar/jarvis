@@ -70,7 +70,7 @@ final class VoiceListener {
         request.shouldReportPartialResults = true
         request.taskHint = .confirmation
         request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
-        request.contextualStrings = configuration.wakeWords + ["пауза", "следующий трек", "громкость сто", "продолжи", "что играет", "что сейчас играет", "луп", "loop", "randomise", "рандомайз", "дейлист", "daylist", "любимые треки"]
+        request.contextualStrings = configuration.wakeWords + ["пауза", "следующий трек", "некст", "next", "скип", "previous", "предыдущий", "громкость сто", "продолжи", "что играет", "что сейчас играет", "луп", "loop", "randomise", "рандомайз", "дейлист", "daylist", "любимые треки"]
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in request.append(buffer) }
         self.engine = engine
         self.request = request

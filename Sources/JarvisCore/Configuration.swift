@@ -13,6 +13,8 @@ public struct Configuration: Codable, Sendable {
     public var speechEngine = "apple"
     public var kokoroVoice = "af_heart"
     public var kokoroSpeed = 1.0
+    public var pronunciations = ["A$AP Rocky": "Ay-sap Rocky", "A$AP": "Ay-sap"]
+    public var intentEngine = "rules"
     public var savedMusic: [String: String] = [:]
     public init() {}
 
@@ -20,7 +22,9 @@ public struct Configuration: Codable, Sendable {
         guard (1...100).contains(maximumVolume), (0.25...0.65).contains(speechRate), (1...20).contains(volumeStep),
               ["automatic", "onDevice"].contains(recognitionMode), ["ru", "en"].contains(responseLanguage),
               ["apple", "kokoro"].contains(speechEngine), (0.5...2.0).contains(kokoroSpeed),
+              ["rules", "openclaw"].contains(intentEngine),
               Self.kokoroVoices.contains(kokoroVoice), (speechEngine != "kokoro" || responseLanguage == "en"),
+              pronunciations.count <= 100, pronunciations.allSatisfy({ !$0.key.isEmpty && $0.key.count <= 100 && !$0.value.isEmpty && $0.value.count <= 200 }),
               !wakeWords.isEmpty, wakeWords.allSatisfy({ !$0.isEmpty && CommandParser.normalize($0).split(separator: " ").count == 1 }),
               !locale.isEmpty else { throw ConfigError.invalid }
         var result = self

@@ -6,8 +6,8 @@
     <key>CFBundleName</key><string>Jarvis</string>
     <key>CFBundleDisplayName</key><string>Jarvis</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>2.5.0</string>
-    <key>CFBundleVersion</key><string>7</string>
+    <key>CFBundleShortVersionString</key><string>2.6.0</string>
+    <key>CFBundleVersion</key><string>8</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
     <key>NSMicrophoneUsageDescription</key><string>Jarvis слушает «Джарвис» и голосовые команды для управления Spotify. Аудиозаписи не сохраняются.</string>

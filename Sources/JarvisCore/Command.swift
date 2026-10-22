@@ -37,8 +37,8 @@ public enum CommandParser {
         switch text {
         case "продолжи", "продолжай", "играй", "включи музыку", "включи", "сними с паузы": return .play
         case "пауза", "стоп", "останови", "останови музыку", "выключи музыку": return .pause
-        case "следующий", "следующая", "следующий трек", "дальше", "переключи": return .next
-        case "предыдущий", "предыдущий трек", "предыдущая", "назад": return .previous
+        case "следующий", "следующая", "следующий трек", "дальше", "переключи", "next", "next track", "некст", "некст трек", "skip", "скип", "скипни": return .next
+        case "предыдущий", "предыдущий трек", "предыдущая", "назад", "previous", "previous track", "превиус", "превиос", "back", "бэк": return .previous
         case "сначала", "трек сначала", "начни сначала": return .restart
         case "тише", "потише", "сделай тише": return .quieter
         case "громче", "погромче", "сделай громче": return .louder
@@ -98,10 +98,12 @@ public enum CommandParser {
 public struct WakeGate {
     private let wakeWords: Set<String>
     private var armedUntil: Date?
+    public private(set) var unrecognizedPhrase: String?
     public init(wakeWords: [String] = ["джарвис", "jarvis"]) {
         self.wakeWords = Set(wakeWords.map(CommandParser.normalize))
     }
     public mutating func consume(_ text: String, now: Date = Date()) -> Command? {
+        unrecognizedPhrase = nil
         let words = CommandParser.normalize(text).split(separator: " ").map(String.init)
         let wake = words.lastIndex(where: { wakeWords.contains($0) })
         let payload: String
@@ -111,7 +113,10 @@ public struct WakeGate {
         } else if let until = armedUntil, now <= until {
             payload = words.joined(separator: " ")
         } else { return nil }
-        guard let command = CommandParser.parse(payload) else { return nil }
+        guard let command = CommandParser.parse(payload) else {
+            if !payload.isEmpty { unrecognizedPhrase = payload; armedUntil = nil }
+            return nil
+        }
         armedUntil = nil
         return command
     }

@@ -9,7 +9,9 @@ public enum SpotifyScript {
         case .play: body = "play"
         case .pause: body = "pause"
         case .next: body = "next track"
-        case .previous: body = "previous track"
+        // Spotify treats Previous after a few seconds as Restart. Rewind first
+        // so this command consistently selects the preceding track.
+        case .previous: body = "set player position to 0\ndelay 0.15\nprevious track"
         case .restart: body = "set player position to 0"
         case .volume(let value): body = "set sound volume to \(max(0, min(cap, value)))"
         case .quieter: body = "set sound volume to my clampValue((sound volume - \(step)), 0, \(cap))"

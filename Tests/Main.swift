@@ -22,7 +22,9 @@ struct TestRunner {
             ("voice settings", tests.testSpeechSettingsValidation),
             ("loop toggle transitions", tests.testLoopTogglesOffAndOnAndExplicitOffStaysOff),
             ("English replies with Russian commands", tests.testEnglishRepliesKeepRussianRecognitionIndependent),
-            ("local Kokoro configuration", tests.testKokoroRequiresEnglishRepliesAndKeepsRussianCommands)
+            ("local Kokoro configuration", tests.testKokoroRequiresEnglishRepliesAndKeepsRussianCommands),
+            ("mixed language shortcuts and music pronunciation", tests.testMixedLanguageShortcutsAndPronunciation),
+            ("model command boundary", tests.testModelOutputCannotEscapeMusicCommandBoundary)
         ]
         for (name, test) in cases { try test(); print("PASS: \(name)") }
         print("\(cases.count) tests, \(assertionCount) assertions passed")
