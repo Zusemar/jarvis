@@ -50,6 +50,16 @@ case "${1:-status}" in
         /bin/launchctl bootstrap "$SERVICE_DOMAIN" "$AGENT_PATH"
         printf '\nУстановлен: %s\nАвтозапуск: %s\nЛоги: %s\n' "$APP_PATH" "$AGENT_PATH" "$LOG_PATH"
         ;;
+    configure)
+        [[ $# -eq 2 && -f "$2" ]] || { printf 'Нужен путь к JSON с настройками.\n' >&2; exit 2; }
+        "$APP_PATH/Contents/MacOS/Jarvis" --config "$2" --dry-run 'Джарвис, громкость сто' >/dev/null
+        CONFIG_PATH="$HOME/Library/Application Support/Jarvis/config.json"
+        mkdir -p "$(dirname "$CONFIG_PATH")"
+        if [[ -f "$CONFIG_PATH" ]]; then cp "$CONFIG_PATH" "$CONFIG_PATH.backup-$(date +%Y%m%d-%H%M%S)-$$"; fi
+        cp "$2" "$CONFIG_PATH"
+        chmod 600 "$CONFIG_PATH"
+        printf 'Настройки сохранены. Для применения перезапустите Jarvis.\n'
+        ;;
     start)
         if ! /bin/launchctl print "$SERVICE_TARGET" >/dev/null 2>&1; then
             /bin/launchctl enable "$SERVICE_TARGET"
@@ -76,6 +86,10 @@ case "${1:-status}" in
         printf 'Не удалось подтвердить восстановление за 40 секунд.\n' >&2
         exit 1
         ;;
+    command)
+        [[ $# -eq 2 ]] || { printf 'Нужна фраза команды.\n' >&2; exit 2; }
+        "$APP_PATH/Contents/MacOS/Jarvis" --execute "$2"
+        ;;
     check)
         "$APP_PATH/Contents/MacOS/Jarvis" --check
         /usr/bin/log show --last 3m --style compact --predicate 'subsystem == "com.zusemar.jarvis"' --info
@@ -99,7 +113,7 @@ case "${1:-status}" in
         /usr/bin/plutil -p .build/Jarvis.LaunchAgent.plist
         ;;
     *)
-        printf 'Использование: bash scripts/service.sh install|start|restart|stop|status|disable|check|test-restart|plist\n' >&2
+        printf 'Использование: bash scripts/service.sh install|configure FILE|start|restart|stop|status|disable|command PHRASE|check|test-restart|plist\n' >&2
         exit 2
         ;;
 esac

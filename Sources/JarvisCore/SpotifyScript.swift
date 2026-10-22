@@ -15,15 +15,27 @@ public enum SpotifyScript {
         case .quieter: body = "set sound volume to my clampValue((sound volume - \(step)), 0, \(cap))"
         case .louder: body = "set sound volume to my clampValue((sound volume + \(step)), 0, \(cap))"
         case .seek(let seconds):
-            body = "if exists current track then\nset player position to my clampValue((player position + \(seconds)), 0, ((duration of current track) / 1000))\nend if"
+            body = "set player position to my clampValue((player position + \(seconds)), 0, ((duration of current track) / 1000))"
+        case .toggleShuffle: body = "set shuffling to not shuffling\nreturn (shuffling as text)"
         case .shuffle(let enabled): body = "set shuffling to \(enabled ? "true" : "false")"
         case .repeatAll(let enabled): body = "set repeating to \(enabled ? "true" : "false")"
         case .nowPlaying:
-            body = "if exists current track then\nreturn (name of current track) & \" — \" & (artist of current track)\nelse\nreturn \"Сейчас ничего не играет\"\nend if"
+            // Spotify doesn't implement the standard AppleScript "exists" event.
+            // Read properties directly and return plain text, even while paused.
+            body = """
+            try
+                set trackTitle to (name of current track) as text
+                set trackArtist to (artist of current track) as text
+                if trackTitle is "" then return "Сейчас ничего не играет"
+                return trackTitle & " — " & trackArtist
+            on error number -1728
+                return "Сейчас ничего не играет"
+            end try
+            """
         case .playSaved(let name):
             guard let configured = configuration.savedMusic[name], let uri = Configuration.spotifyURI(configured) else { return nil }
             body = "play track \"\(uri)\""
-        case .help, .stopListening: return nil
+        case .repeatTrack, .toggleTrackRepeat, .help, .stopListening: return nil
         }
         return """
         on clampValue(value, lowerBound, upperBound)

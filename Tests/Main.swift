@@ -14,7 +14,14 @@ struct TestRunner {
             ("volume boundaries", tests.testVolumeAlwaysClampedInGeneratedCommands),
             ("Spotify URI and injection rejection", tests.testSpotifyURIValidationRejectsAppleScriptInjectionAndOtherHosts),
             ("config validation", tests.testConfigValidationAndNameNormalization),
-            ("seek and unknown music", tests.testSeekingIsBoundedAndUnsupportedMusicDoesNotBecomeAScript)
+            ("seek and unknown music", tests.testSeekingIsBoundedAndUnsupportedMusicDoesNotBecomeAScript),
+            ("English commands and transliterations", tests.testEnglishCommandsAndTransliterations),
+            ("personal playlist aliases", tests.testPersonalPlaylistAliases),
+            ("volume 100", tests.testDefaultVolumeCanReachOneHundred),
+            ("now playing text reply", tests.testNowPlayingReadsPropertiesWithoutUnsupportedExists),
+            ("voice settings", tests.testSpeechSettingsValidation),
+            ("loop toggle transitions", tests.testLoopTogglesOffAndOnAndExplicitOffStaysOff),
+            ("English replies with Russian commands", tests.testEnglishRepliesKeepRussianRecognitionIndependent)
         ]
         for (name, test) in cases { try test(); print("PASS: \(name)") }
         print("\(cases.count) tests, \(assertionCount) assertions passed")

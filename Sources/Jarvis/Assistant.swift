@@ -73,16 +73,14 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
             listener.onFailure = { message in log.error("\(message, privacy: .public)") }
             self.listener = listener
             // Request Spotify Automation permission now, before any commands are spoken.
-            _ = try executeScript("with timeout of 5 seconds\ntell application id \"com.spotify.client\" to get version\nend timeout")
+            _ = try SpotifyController.execute("with timeout of 5 seconds\ntell application id \"com.spotify.client\" to get version\nend timeout")
             let mode = listener.usesOnDeviceRecognition ? "локальное" : "через сервис Apple"
             log.info("Распознавание: \(mode, privacy: .public). Jarvis готов.")
             if configuration.recognitionMode == "onDevice", !listener.usesOnDeviceRecognition {
                 fatal("На этом Mac локальное распознавание выбранного языка недоступно. Измените recognitionMode на automatic в настройках.")
                 return
             }
-            let greeting = listener.usesOnDeviceRecognition
-                ? "Джарвис готов. Скажите: Джарвис, помощь."
-                : "Джарвис готов. Распознавание через сервис Apple. Скажите: Джарвис, помощь."
+            let greeting = message(listener.usesOnDeviceRecognition ? .readyLocal : .readyNetwork)
             speak(greeting) { [weak self] in self?.resetAndListen() }
         } catch { fatal(error.localizedDescription) }
     }
@@ -112,40 +110,58 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
         pending?.cancel()
         listener?.stop()
         if command == .stopListening {
-            speak("Джарвис завершает работу.") { NSApp.terminate(nil) }
+            speak(message(.goodbye)) { NSApp.terminate(nil) }
             return
         }
         if command == .help {
-            speak("Скажите Джарвис и команду: пауза, продолжи, следующий, предыдущий, тише, громче, громкость сорок, сначала, вперед на десять секунд, что играет. Для выхода: Джарвис, перестань слушать.") { [weak self] in self?.resetAndListen() }
+            speak(message(.help)) { [weak self] in self?.resetAndListen() }
+            return
+        }
+        if let action = command.trackRepeatAction {
+            SpotifyController.setTrackRepeat(action) { [weak self] result in
+                guard let self else { return }
+                switch result {
+                case .success: self.resetAndListen()
+                case .failure(let error):
+                    self.speak(self.spokenError(error)) { [weak self] in self?.resetAndListen() }
+                }
+            }
             return
         }
         guard let source = SpotifyScript.source(for: command, configuration: configuration) else {
-            speak("Сначала сохраните ссылку на этот трек или плейлист в настройках Джарвиса.") { [weak self] in self?.resetAndListen() }
+            speak(message(.missingMusic)) { [weak self] in self?.resetAndListen() }
             return
         }
         do {
-            let result = try executeScript(source)
+            let result = try SpotifyController.execute(source)
             if command == .nowPlaying {
-                speak(result ?? "Сейчас ничего не играет") { [weak self] in self?.resetAndListen() }
+                // Lower the music briefly so the title is audible over studio speakers.
+                let originalVolume = try SpotifyController.volume()
+                let ducked = min(originalVolume ?? 15, 15)
+                try? SpotifyController.setVolume(ducked)
+                let title = result == VoiceMessage.nothingPlaying.text(language: "ru") ? message(.nothingPlaying) : result ?? message(.nothingPlaying)
+                speak(title) { [weak self] in
+                    if let originalVolume, (try? SpotifyController.volume()) == ducked {
+                        try? SpotifyController.setVolume(originalVolume)
+                    }
+                    self?.resetAndListen()
+                }
             } else if configuration.spokenFeedback {
-                speak("Готово") { [weak self] in self?.resetAndListen() }
+                speak(message(.done)) { [weak self] in self?.resetAndListen() }
             } else { resetAndListen() }
         } catch {
             log.error("Ошибка Spotify: \(error.localizedDescription, privacy: .public)")
-            speak("Не удалось выполнить команду. Проверьте Spotify и разрешение Автоматизация для Джарвиса.") { [weak self] in self?.resetAndListen() }
+            speak(spokenError(error)) { [weak self] in self?.resetAndListen() }
         }
     }
 
-    private func executeScript(_ source: String) throws -> String? {
-        var details: NSDictionary?
-        let script = NSAppleScript(source: source)
-        let result = script?.executeAndReturnError(&details)
-        if let details {
-            throw NSError(domain: "Jarvis.Spotify", code: details[NSAppleScript.errorNumber] as? Int ?? -1,
-                          userInfo: [NSLocalizedDescriptionKey: details[NSAppleScript.errorMessage] as? String ?? "Spotify недоступен"])
-        }
-        guard script != nil else { throw ListenerError.unavailable("Не удалось создать команду Spotify.") }
-        return result?.stringValue
+    private func message(_ message: VoiceMessage) -> String {
+        message.text(language: configuration.responseLanguage)
+    }
+
+    private func spokenError(_ error: Error) -> String {
+        if let spotifyError = error as? SpotifyError { return spotifyError.spokenDescription(language: configuration.responseLanguage) }
+        return configuration.responseLanguage == "en" ? message(.spotifyFailure) : "Не удалось выполнить команду Spotify. " + error.localizedDescription
     }
 
     private func resetAndListen() {
@@ -162,8 +178,9 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
         pending?.cancel()
         afterSpeech = completion
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: configuration.locale)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        utterance.voice = AVSpeechSynthesisVoice(identifier: configuration.voiceIdentifier)
+            ?? AVSpeechSynthesisVoice(language: configuration.responseLanguage == "en" ? "en-GB" : configuration.locale)
+        utterance.rate = Float(configuration.speechRate)
         synthesizer.speak(utterance)
     }
 
@@ -176,7 +193,7 @@ final class Assistant: NSObject, NSApplicationDelegate, AVSpeechSynthesizerDeleg
     private func fatal(_ message: String) {
         log.error("\(message, privacy: .public)")
         fputs("Jarvis: \(message)\n", stderr)
-        speak(message) { NSApp.terminate(nil) }
+        speak(configuration.responseLanguage == "en" ? self.message(.startupFailure) : message) { NSApp.terminate(nil) }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -1,9 +1,28 @@
 import Foundation
 
 public enum Command: Equatable, Sendable {
-    case play, pause, next, previous, restart, quieter, louder
-    case volume(Int), seek(Int), shuffle(Bool), repeatAll(Bool)
+    case play, pause, next, previous, restart, quieter, louder, toggleShuffle, toggleTrackRepeat
+    case volume(Int), seek(Int), shuffle(Bool), repeatAll(Bool), repeatTrack(Bool)
     case playSaved(String), nowPlaying, help, stopListening
+
+    public var trackRepeatAction: TrackRepeatAction? {
+        switch self {
+        case .toggleTrackRepeat: return .toggle
+        case .repeatTrack(let enabled): return .set(enabled)
+        default: return nil
+        }
+    }
+}
+
+public enum TrackRepeatAction: Equatable, Sendable {
+    case toggle, set(Bool)
+
+    public func targetState(from current: Int) -> Int {
+        switch self {
+        case .toggle: return current == 2 ? 0 : 2
+        case .set(let enabled): return enabled ? 2 : 0
+        }
+    }
 }
 
 public enum CommandParser {
@@ -23,11 +42,17 @@ public enum CommandParser {
         case "сначала", "трек сначала", "начни сначала": return .restart
         case "тише", "потише", "сделай тише": return .quieter
         case "громче", "погромче", "сделай громче": return .louder
-        case "перемешай", "включи перемешивание": return .shuffle(true)
-        case "выключи перемешивание": return .shuffle(false)
+        case "включи перемешивание": return .shuffle(true)
+        case "перемешай", "randomise", "randomize", "рандомайз", "рандомайс", "рандомизируй", "шафл": return .toggleShuffle
+        case "выключи перемешивание", "randomise off", "randomize off", "выключи рандом", "выключи рандомайз": return .shuffle(false)
+        case "loop", "луп": return .toggleTrackRepeat
+        case "включи loop", "включи луп", "повторяй трек", "повторяй песню", "зацикли трек": return .repeatTrack(true)
+        case "loop off", "выключи loop", "выключи луп", "убери луп", "сними луп": return .repeatTrack(false)
         case "включи повтор": return .repeatAll(true)
         case "выключи повтор": return .repeatAll(false)
-        case "что играет", "какой трек", "назови трек": return .nowPlaying
+        case "что играет", "что сейчас играет", "что за трек", "какой трек", "назови трек", "название трека": return .nowPlaying
+        case "daylist", "дейлист", "дэйлист", "дей лист", "дэй лист", "включи daylist", "включи дейлист", "включи дэйлист", "включи дей лист", "включи дэй лист", "включи плейлист daylist", "включи плейлист дейлист": return .playSaved("daylist")
+        case "любимые треки", "включи любимые треки", "включи любимые", "включи мои любимые треки", "включи плейлист любимые треки", "liked songs": return .playSaved("любимые треки")
         case "помощь", "что ты умеешь": return .help
         case "перестань слушать", "заверши работу", "выход": return .stopListening
         default: break

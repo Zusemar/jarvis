@@ -3,16 +3,19 @@ import Foundation
 public struct Configuration: Codable, Sendable {
     public var locale = "ru-RU"
     public var wakeWords = ["джарвис", "jarvis"]
-    public var maximumVolume = 65
+    public var maximumVolume = 100
     public var volumeStep = 5
     public var recognitionMode = "automatic"
     public var spokenFeedback = false
+    public var voiceIdentifier = ""
+    public var responseLanguage = "ru"
+    public var speechRate = 0.5
     public var savedMusic: [String: String] = [:]
     public init() {}
 
     public func validated() throws -> Configuration {
-        guard (1...100).contains(maximumVolume), (1...20).contains(volumeStep),
-              ["automatic", "onDevice"].contains(recognitionMode),
+        guard (1...100).contains(maximumVolume), (0.25...0.65).contains(speechRate), (1...20).contains(volumeStep),
+              ["automatic", "onDevice"].contains(recognitionMode), ["ru", "en"].contains(responseLanguage),
               !wakeWords.isEmpty, wakeWords.allSatisfy({ !$0.isEmpty && CommandParser.normalize($0).split(separator: " ").count == 1 }),
               !locale.isEmpty else { throw ConfigError.invalid }
         var result = self
