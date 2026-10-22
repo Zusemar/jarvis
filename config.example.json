@@ -1,0 +1,23 @@
+{
+  "locale": "ru-RU",
+  "wakeWords": [
+    "джарвис",
+    "jarvis"
+  ],
+  "maximumVolume": 100,
+  "volumeStep": 5,
+  "recognitionMode": "automatic",
+  "spokenFeedback": false,
+  "savedMusic": {},
+  "voiceIdentifier": "",
+  "speechRate": 0.5,
+  "responseLanguage": "ru",
+  "speechEngine": "apple",
+  "kokoroVoice": "af_heart",
+  "kokoroSpeed": 1.0,
+  "intentEngine": "rules",
+  "pronunciations": {
+    "A$AP Rocky": "Ay-sap Rocky",
+    "A$AP": "Ay-sap"
+  }
+}
